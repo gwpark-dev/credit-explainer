@@ -1,0 +1,11 @@
+.env
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+outputs/*.joblib
+
+# 데이터는 커밋하지 않음 (실험 결과·산출물 csv는 예외)
+data/
+*.csv
+!experiments/amnesty_results.csv
+!outputs/*.csv

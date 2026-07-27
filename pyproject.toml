@@ -1,0 +1,14 @@
+[project]
+name = "credit-explainer"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=7.3.0",
+    "joblib>=1.5.3",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.11.1",
+    "numpy<2.4",
+    "pandas>=3.0.5",
+    "scikit-learn>=1.9.0",
+    "shap>=0.52.0",
+]
