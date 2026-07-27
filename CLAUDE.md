@@ -35,7 +35,9 @@ SHAP 설명·공정성 감사·LLM 번역 계층을 얹는 '신뢰 계층' 데�
 - [x] Counterfactual 수동 구현(경계 사례 1건, 행동 가능 변수 격자 탐색)
 - [x] 공정성 감사(프록시 그룹: 3금융권대출잔액>0) → `outputs/fairness_audit.png`
 - [x] 부록: 신용사면 실험 차트 → `outputs/amnesty_experiment.png`
-- [ ] LLM 자연어 설명문 생성 (별도 프롬프트, 외부 API 결정 후)
+- [x] LLM 자연어 설명문 생성 (`notebooks/02_demo_explain.ipynb`, ADR-0001):
+      claude-opus-4-8, 캐시 모드(`outputs/explanations_cache.json`) → 발표장 API 호출 0회,
+      HITL 검토 3건 통과, 규제 매핑 표 포함
 
 **DoD**: `uv run jupyter nbconvert --to notebook --execute`로 전체 무오류 실행,
 outputs/ png 5개 이상, 기준 수치 재현, 커밋 완료(푸시 X).
