@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit Explainer — AI 신용평가 설명 데모</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface:#fcfcfb; --page:#f9f9f7; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --ring:rgba(11,11,11,0.10);
+  --pos:#e34948; --neg:#2a78d6; --mid:#f0efec;
+  --s1:#2a78d6; --s2:#eb6834;
+  --good:#0ca30c; --accent-bg:#e8f0fb;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --surface:#1a1a19; --page:#0d0d0d; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,0.10);
+    --pos:#e66767; --neg:#3987e5; --mid:#383835;
+    --s1:#3987e5; --s2:#d95926;
+    --good:#0ca30c; --accent-bg:#12233a;
+  }
+}
+*{box-sizing:border-box; margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI","Malgun Gothic",sans-serif; background:var(--page); color:var(--ink); line-height:1.6; padding:32px 16px 64px}
+.wrap{max-width:960px; margin:0 auto}
+h1{font-size:26px; font-weight:600; letter-spacing:-0.01em}
+h2{font-size:17px; font-weight:600; margin-bottom:12px}
+.sub{color:var(--ink-2); font-size:14px; margin-top:6px}
+.badges{display:flex; gap:6px; flex-wrap:wrap; margin-top:12px}
+.badge{font-size:12px; padding:3px 10px; border-radius:999px; border:1px solid var(--ring); background:var(--surface); color:var(--ink-2)}
+.arch{display:flex; gap:6px; align-items:stretch; flex-wrap:wrap; margin:24px 0 8px}
+.arch .step{flex:1; min-width:150px; background:var(--surface); border:1px solid var(--ring); border-radius:10px; padding:10px 12px}
+.arch .no{font-size:11px; color:var(--muted)}
+.arch .nm{font-size:14px; font-weight:600}
+.arch .ds{font-size:12px; color:var(--ink-2)}
+.card{background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:20px; margin-top:16px}
+.tabs{display:flex; gap:8px; flex-wrap:wrap; margin-top:24px}
+.tab{flex:1; min-width:180px; text-align:left; background:var(--surface); border:1px solid var(--ring); border-radius:10px; padding:12px 14px; cursor:pointer; font:inherit; color:var(--ink)}
+.tab .t1{font-size:14px; font-weight:600}
+.tab .t2{font-size:12px; color:var(--ink-2)}
+.tab[aria-selected="true"]{border-color:var(--neg); outline:2px solid var(--neg); outline-offset:-1px}
+.grid2{display:grid; grid-template-columns:minmax(260px,5fr) minmax(300px,7fr); gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.pd-num{font-size:40px; font-weight:600; letter-spacing:-0.02em; line-height:1.1}
+.verdict{display:inline-block; font-size:13px; font-weight:600; padding:3px 12px; border-radius:999px; margin-left:8px; vertical-align:middle}
+.verdict.reject{background:var(--pos); color:#fff}
+.verdict.approve{background:var(--good); color:#fff}
+.gauge{position:relative; height:14px; background:var(--mid); border-radius:4px; margin:16px 0 4px; overflow:visible}
+.gauge .fill{position:absolute; left:0; top:0; bottom:0; border-radius:4px 0 0 4px; background:var(--pos); transition:width .6s ease, background .3s}
+.gauge .thr{position:absolute; top:-5px; bottom:-5px; width:2px; background:var(--ink)}
+.gauge-lbl{display:flex; justify-content:space-between; font-size:11px; color:var(--muted)}
+.meta{font-size:12px; color:var(--muted); margin-top:10px}
+.shap-row{display:grid; grid-template-columns:minmax(120px,180px) 1fr; gap:10px; align-items:center; margin-top:10px}
+.shap-name{font-size:13px; text-align:right}
+.shap-name .val{display:block; font-size:11px; color:var(--muted)}
+.shap-track{position:relative; height:18px}
+.shap-axis{position:absolute; left:50%; top:-4px; bottom:-4px; width:1px; background:var(--baseline)}
+.shap-bar{position:absolute; top:0; height:18px; transition:width .5s ease}
+.shap-bar.pos{left:50%; background:var(--pos); border-radius:0 4px 4px 0}
+.shap-bar.neg{right:50%; background:var(--neg); border-radius:4px 0 0 4px}
+.shap-vlbl{position:absolute; top:0; font-size:11px; line-height:18px; color:var(--ink-2); white-space:nowrap}
+.legend{display:flex; gap:16px; font-size:12px; color:var(--ink-2); margin-top:14px}
+.sw{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+.cf{border-left:3px solid var(--neg); border-radius:0; padding:12px 16px; background:var(--accent-bg); margin-top:16px}
+.cf button{font:inherit; font-size:13px; font-weight:600; border:1px solid var(--neg); color:var(--neg); background:transparent; border-radius:8px; padding:6px 14px; cursor:pointer; margin-top:8px}
+.cf button.on{background:var(--neg); color:#fff}
+.explain{white-space:pre-wrap; font-size:14.5px; background:var(--page); border:1px solid var(--grid); border-radius:10px; padding:18px; min-height:180px}
+.explain strong{font-weight:600}
+.chip{display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 10px; border-radius:999px; background:var(--mid); color:var(--ink-2)}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
+.fair-grid{display:grid; grid-template-columns:70px 1fr; gap:8px 12px; align-items:center; margin-top:8px}
+.fair-lbl{font-size:13px; text-align:right; color:var(--ink-2)}
+.fair-track{position:relative; height:40px}
+.fair-bar{position:absolute; left:0; height:16px; border-radius:0 4px 4px 0; min-width:2px}
+.fair-bar.a{top:2px; background:var(--s1)}
+.fair-bar.b{top:22px; background:var(--s2)}
+.fair-vlbl{position:absolute; font-size:11px; line-height:16px; color:var(--ink-2); white-space:nowrap}
+table{border-collapse:collapse; width:100%; font-size:13px; margin-top:14px}
+th,td{padding:6px 10px; border-bottom:1px solid var(--grid); text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink-2); font-weight:600}
+.note{font-size:13px; color:var(--ink-2); margin-top:12px}
+.reg{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-top:8px}
+.reg .r{border:1px solid var(--ring); border-radius:10px; padding:14px; background:var(--page)}
+.reg .r .h{font-size:13px; font-weight:600}
+.reg .r .b{font-size:12.5px; color:var(--ink-2); margin-top:4px}
+footer{margin-top:40px; font-size:12px; color:var(--muted); border-top:1px solid var(--grid); padding-top:16px}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Credit Explainer</h1>
+  <p class="sub">AI 신용평가 결과를 금융소비자의 언어로 — 설명요구권(신용정보법 제36조의2) 대응 데모</p>
+  <div class="badges">
+    <span class="badge">정적 데모 · 사전 계산된 실제 결과 재생</span>
+    <span class="badge">데이터: 신용정보원 AI Play DB (합성 데이터 200,459건)</span>
+    <span class="badge">모형: EasyEnsemble 20×HGB · AUC 0.9230 · KS 0.7364</span>
+    <span class="badge">설명문: Claude API 사전 생성 · HITL 검토 통과</span>
+  </div>
+</header>
+
+<div class="arch" role="list" aria-label="시스템 아키텍처 4계층">
+  <div class="step" role="listitem"><div class="no">① 판단형 AI</div><div class="nm">평가</div><div class="ds">PD 산출 · 임계값 판정</div></div>
+  <div class="step" role="listitem"><div class="no">② XAI (SHAP)</div><div class="nm">근거</div><div class="ds">개인별 기여 요인 Top 5</div></div>
+  <div class="step" role="listitem"><div class="no">③ 생성형 AI</div><div class="nm">번역</div><div class="ds">자연어 설명문 (평가 비관여)</div></div>
+  <div class="step" role="listitem"><div class="no">④ 거버넌스</div><div class="nm">통제</div><div class="ds">HITL · 공정성 감사 · 캐시</div></div>
+</div>
+
+<div class="tabs" role="tablist" aria-label="사례 선택">
+  <button class="tab" role="tab" id="tabbtn-1" aria-selected="false" onclick="selectCase(1)"><span class="t1">사례 1 — 고위험</span><br><span class="t2">PD 50.12% · 거절</span></button>
+  <button class="tab" role="tab" id="tabbtn-2" aria-selected="false" onclick="selectCase(2)"><span class="t1">사례 2 — 저위험</span><br><span class="t2">PD 0.00% · 승인</span></button>
+  <button class="tab" role="tab" id="tabbtn-3" aria-selected="false" onclick="selectCase(3)"><span class="t1">사례 3 — 경계</span><br><span class="t2">PD 4.49% · 임계값 바로 위</span></button>
+</div>
+
+<div class="grid2">
+  <section class="card" aria-labelledby="h-verdict">
+    <h2 id="h-verdict">① 평가 결과 <span style="font-weight:400;color:var(--muted);font-size:12px">판단형 AI 계층</span></h2>
+    <div><span class="pd-num" id="pd-num">—</span><span class="verdict reject" id="verdict">—</span></div>
+    <div style="font-size:13px;color:var(--ink-2)">향후 12개월 내 연체(부실) 위험 추정치</div>
+    <div class="gauge" aria-hidden="true"><div class="fill" id="gauge-fill" style="width:0%"></div><div class="thr" id="gauge-thr"></div></div>
+    <div class="gauge-lbl"><span>0%</span><span id="thr-lbl">거절 기준값 4.43%</span><span id="gauge-max">60%</span></div>
+    <div class="meta">임계값 0.0443은 비용 최적화 기준(실습과제 산출) · 게이지는 표시용 선형 축</div>
+    <div class="cf" id="cf-box" hidden>
+      <div style="font-size:13px;font-weight:600">개선 시뮬레이션 (Counterfactual)</div>
+      <div style="font-size:13px;color:var(--ink-2)" id="cf-desc">단기카드대출잔액을 25% 상환하면 PD 4.49% → 2.06%로 기준값 미만이 됩니다.</div>
+      <button id="cf-btn" onclick="toggleCF()" aria-pressed="false">시뮬레이션 적용</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-shap">
+    <h2 id="h-shap">② 판정 근거 Top 5 <span style="font-weight:400;color:var(--muted);font-size:12px">XAI 계층 · SHAP (log-odds)</span></h2>
+    <div id="shap-chart"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--pos)"></span>위험을 높인 요인 (+)</span>
+      <span><span class="sw" style="background:var(--neg)"></span>위험을 낮춘 요인 (−)</span>
+    </div>
+    <div class="meta">배깅 20개 중 대표 파이프라인 1개 기준 · 상관 변수 간 기여도 분산 가능성 있음(노트북에 한계 명시)</div>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="h-exp">
+  <h2 id="h-exp">③ AI 생성 설명문 <span style="font-weight:400;color:var(--muted);font-size:12px">생성형 AI 계층 · 번역만 담당</span></h2>
+  <div class="chips">
+    <span class="chip" id="exp-model">모델 —</span>
+    <span class="chip" id="exp-cost">비용 —</span>
+    <span class="chip">캐시 재생 (API 호출 없음)</span>
+    <span class="chip" style="background:var(--accent-bg);color:var(--neg)">HITL 검토: 수치 일치 · 금지 문구 없음 · 환각 0건</span>
+  </div>
+  <div class="explain" id="exp-text" aria-live="polite"></div>
+  <div class="note">프롬프트는 5요소 공식(역할·맥락·목표·형식·제약)으로 구성 — 입력에 없는 수치 생성 금지, 확정적 약속 금지. 최종 발송 전 사람 검토(HITL)를 전제로 설계.</div>
+</section>
+
+<section class="card" aria-labelledby="h-fair">
+  <h2 id="h-fair">④ 공정성 감사 <span style="font-weight:400;color:var(--muted);font-size:12px">거버넌스 계층 · 그룹별 세분화 평가</span></h2>
+  <div class="note" style="margin:0 0 4px">기초데이터에 인구통계 변수가 없어(법상 배제) <strong>취약계층 프록시 그룹</strong>으로 세분화: 그룹 A = 3금융권(대부업 등) 대출 보유(n=376), 그룹 B = 미보유(n=39,716) — 홀드아웃 기준.</div>
+  <div class="fair-grid" id="fair-chart"></div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--s1)"></span>그룹 A — 3금융권 이용</span>
+    <span><span class="sw" style="background:var(--s2)"></span>그룹 B — 미이용</span>
+  </div>
+  <table>
+    <caption class="sr-only">그룹별 공정성 지표 표</caption>
+    <thead><tr><th>그룹</th><th>N</th><th>실제 연체율</th><th>거절률</th><th>FPR</th><th>FNR</th></tr></thead>
+    <tbody>
+      <tr><td>A (3금융권 이용)</td><td>376</td><td>5.32%</td><td>31.91%</td><td>31.74%</td><td>65.00%</td></tr>
+      <tr><td>B (미이용)</td><td>39,716</td><td>0.18%</td><td>0.51%</td><td>0.45%</td><td>69.44%</td></tr>
+    </tbody>
+  </table>
+  <div class="note">거절률 격차(Demographic Parity 관점)는 0.314로 크지만, 실제 연체자를 놓치는 비율(FNR, Equal Opportunity 관점)의 격차는 0.044로 작습니다. <strong>격차는 차별의 증거가 아니라 조사 신호</strong> — 그룹 A의 실제 위험(연체율 5.32% vs 0.18%)이 반영된 결과인지, 부당한 대우인지 후속 검토를 촉발하는 지표로 사용합니다.</div>
+</section>
+
+<section class="card" aria-labelledby="h-reg">
+  <h2 id="h-reg">규제 매핑</h2>
+  <div class="reg">
+    <div class="r"><div class="h">신용정보법 제36조의2</div><div class="b">자동화평가 설명요구권·정보제출권·이의제기권 → 설명문 ①결과 ②기준 ③개선 ④권리 구조로 이행</div></div>
+    <div class="r"><div class="h">EU GDPR 제22조 · AI Act(고위험)</div><div class="b">전적 자동화 의사결정 제한 → HITL 검토 단계, 생성·판정 로그 보관</div></div>
+    <div class="r"><div class="h">금융분야 AI 가이드라인</div><div class="b">보조수단성·신뢰성·보안성 → 생성형 AI는 번역만 담당, 비용·호출 상한 통제, API 키 분리 관리</div></div>
+  </div>
+</section>
+
+<footer>
+  본 페이지는 연세대학교 정보대학원 「AI와 신용평가모형」 발표과제의 학습·연구 목적 데모입니다. 모형 추론과 설명문 생성은 사전에 실행되었으며, 이 화면은 그 실제 결과를 재생합니다. 데이터는 한국신용정보원 AI 러닝 플랫폼의 합성 데이터(AI Play DB)이며 실제 개인정보가 아닙니다. 본 내용은 여신 심사·투자 권유가 아닙니다. © 2026 박건우 · gwpark-dev/credit-explainer
+</footer>
+</div>
+
+<script>
+const CASES = {
+  1: {
+    pd: 50.12, verdict: "거절", gaugeMax: 60,
+    factors: [
+      {name:"연체이력강도", val:"지표 4개 중 4개 해당", shap: 5.221},
+      {name:"3금융권잔액비중", val:"94.9%", shap: 1.641},
+      {name:"비1금융권잔액비중", val:"100.0%", shap: 1.444},
+      {name:"신용카드개설기관수", val:"2개", shap: 0.926},
+      {name:"신용성대출비중", val:"100.0%", shap: 0.694}
+    ],
+    model:"claude-opus-4-8", cost:"$0.0175 (486 tokens)",
+    text:"① 결과 통지\n이번 신용평가 결과, 고객님의 대출 신청은 승인되지 않았습니다(부실 위험 추정치 50.12%로, 거절 기준값인 4.43% 이상에 해당).\n\n② 주요 요인\n이 결과에 영향을 준 주요 요인은 다음과 같습니다. 첫째, 연체와 관련된 지표 4개 중 4개 모두에 해당하여 위험을 높였습니다. 둘째, 제3금융권(대부업 등) 잔액 비중이 94.9%로 높았습니다. 셋째, 제1금융권(은행)이 아닌 곳의 잔액 비중이 100.0%였습니다. 넷째, 신용카드를 개설한 기관이 2개였고, 다섯째, 신용성 대출 비중이 100.0%인 점이 위험 증가 요인으로 작용했습니다.\n\n③ 개선 참고사항\n연체 관련 지표나 비은행권·신용성 대출 비중 등이 개선되면 재평가 시 결과가 달라질 수 있습니다.\n\n④ 권리 안내\n고객님께서는 이 평가에 대한 설명을 요구하실 수 있으며, 기초정보를 제출하거나 잘못된 정보의 정정을 요청하실 수 있습니다. 또한 결과에 대해 이의를 제기하실 수 있습니다."
+  },
+  2: {
+    pd: 0.004, verdict: "승인", gaugeMax: 60,
+    factors: [
+      {name:"신용카드사용비중", val:"100.0%", shap: -3.904},
+      {name:"신용카드개설기관수", val:"3개", shap: -2.397},
+      {name:"보험료합계", val:"12", shap: -1.473},
+      {name:"월평균신용카드사용액", val:"1,056", shap: -1.337},
+      {name:"연금보험료", val:"4", shap: -1.146}
+    ],
+    model:"claude-opus-4-8", cost:"$0.0175 (494 tokens)",
+    text:"① 결과 통지\n고객님의 신용평가 결과는 승인으로 판정되었습니다.\n\n② 주요 요인\n이번 평가에서 추정된 부실 위험은 0.00%로, 거절 기준값인 4.43%보다 낮았습니다. 결과에 긍정적으로 작용한 주요 요인은 다음과 같습니다. 첫째, 전체 사용 중 신용카드 사용 비중이 100.0%로 나타났습니다. 둘째, 신용카드를 개설하신 기관 수가 3개였습니다. 셋째, 보험료 합계가 12로 확인되었습니다. 넷째, 월평균 신용카드 사용액이 1,056이었으며, 다섯째, 연금보험료가 4로 나타났습니다. 이 다섯 항목이 모두 위험을 낮추는 방향으로 작용했습니다.\n\n③ 개선 참고사항\n이번 평가에는 별도의 개선 시뮬레이션 결과가 포함되어 있지 않아, 참고 사항을 함께 안내드리지 못하는 점 양해 부탁드립니다.\n\n④ 권리 안내\n고객님께서는 본 평가에 대해 설명을 요구하실 권리, 평가의 기초가 된 정보를 제출하거나 정정을 요청하실 권리, 그리고 결과에 대해 이의를 제기하실 권리가 있습니다."
+  },
+  3: {
+    pd: 4.49, verdict: "거절", gaugeMax: 10, cf: {pd: 2.06, desc:"단기카드대출잔액(현재 120)을 25% 상환하면 PD 4.49% → 2.06%로 기준값(4.43%) 미만이 되어 재평가 시 결과가 달라질 수 있습니다."},
+    factors: [
+      {name:"최고금리", val:"연 22.9%", shap: 5.596},
+      {name:"잔액가중평균금리", val:"연 19.19%", shap: 2.143},
+      {name:"단기카드대출금리", val:"연 22.9%", shap: -1.371},
+      {name:"월평균신용카드사용액", val:"436", shap: -1.172},
+      {name:"카드사용액합계", val:"626", shap: -1.031}
+    ],
+    model:"claude-opus-4-8", cost:"$0.0188 (525 tokens)",
+    text:"① 결과 통지\n이번 신용평가 결과, 고객님의 신청은 '거절'로 판정되었음을 안내드립니다.\n\n② 주요 요인\n이번 판정에서는 고객님의 부실 위험 추정치가 4.49%로, 거절 기준값인 4.43%를 조금 넘었습니다. 결과에 큰 영향을 준 요인은 다음과 같습니다. 첫째, 최고금리가 연 22.9%로 높아 위험을 키우는 요인으로 작용했습니다. 둘째, 잔액가중평균금리(대출 잔액을 반영해 계산한 평균 이자율)가 연 19.19%로 나타나 역시 위험을 높이는 요인이었습니다. 반면 단기카드대출금리(연 22.9%), 월평균신용카드사용액(436), 카드사용액합계(626)는 위험을 낮추는 방향으로 작용했습니다.\n\n③ 개선 참고사항\n참고로, 단기카드대출잔액을 25% 상환하시면 부실 위험 추정치가 4.49%에서 2.06%로 내려가 기준값 미만이 되어, 재평가 시 결과가 달라질 수 있습니다.\n\n④ 권리 안내\n고객님께서는 이 평가 결과에 대해 설명을 요구하실 권리, 평가에 쓰인 기초정보의 제출 및 정정을 요청하실 권리, 그리고 결과에 이의를 제기하실 권리가 있습니다."
+  }
+};
+const THRESHOLD = 4.43;
+let current = 3, cfOn = false, typeTimer = null;
+
+function fmtPD(v){ return (v < 0.01 ? "0.00" : v.toFixed(2)) + "%"; }
+
+function renderGauge(pd, max){
+  const fill = document.getElementById("gauge-fill");
+  fill.style.width = Math.min(100, pd / max * 100) + "%";
+  fill.style.background = pd >= THRESHOLD ? "var(--pos)" : "var(--good)";
+  document.getElementById("gauge-thr").style.left = (THRESHOLD / max * 100) + "%";
+  document.getElementById("gauge-max").textContent = max + "%";
+}
+
+function renderShap(factors){
+  const box = document.getElementById("shap-chart");
+  const maxAbs = Math.max(...factors.map(f => Math.abs(f.shap)));
+  box.innerHTML = "";
+  factors.forEach(f => {
+    const row = document.createElement("div"); row.className = "shap-row";
+    const w = Math.abs(f.shap) / maxAbs * 46;
+    const pos = f.shap >= 0;
+    const sign = (pos ? "+" : "−") + Math.abs(f.shap).toFixed(2);
+    row.innerHTML =
+      '<div class="shap-name">' + f.name + '<span class="val">' + f.val + '</span></div>' +
+      '<div class="shap-track"><div class="shap-axis"></div>' +
+      '<div class="shap-bar ' + (pos ? "pos" : "neg") + '" style="width:0%"></div>' +
+      '<div class="shap-vlbl" style="' + (pos ? ("left:calc(50% + " + (w + 1.5) + "%)") : ("right:calc(50% + " + (w + 1.5) + "%)")) + '">' + sign + '</div></div>';
+    box.appendChild(row);
+    requestAnimationFrame(() => { row.querySelector(".shap-bar").style.width = w + "%"; });
+  });
+}
+
+function typeText(text){
+  const el = document.getElementById("exp-text");
+  if (typeTimer) clearInterval(typeTimer);
+  el.textContent = "";
+  let i = 0;
+  typeTimer = setInterval(() => {
+    i = Math.min(text.length, i + 4);
+    el.textContent = text.slice(0, i);
+    if (i >= text.length) clearInterval(typeTimer);
+  }, 12);
+}
+
+function selectCase(n){
+  current = n; cfOn = false;
+  const c = CASES[n];
+  [1,2,3].forEach(k => document.getElementById("tabbtn-" + k).setAttribute("aria-selected", String(k === n)));
+  document.getElementById("pd-num").textContent = fmtPD(c.pd);
+  const v = document.getElementById("verdict");
+  v.textContent = c.verdict; v.className = "verdict " + (c.verdict === "승인" ? "approve" : "reject");
+  renderGauge(c.pd, c.gaugeMax);
+  renderShap(c.factors);
+  document.getElementById("exp-model").textContent = "모델 " + c.model;
+  document.getElementById("exp-cost").textContent = "생성 비용 " + c.cost;
+  const cfBox = document.getElementById("cf-box");
+  if (c.cf){ cfBox.hidden = false; document.getElementById("cf-desc").textContent = c.cf.desc;
+    const b = document.getElementById("cf-btn"); b.classList.remove("on"); b.textContent = "시뮬레이션 적용"; b.setAttribute("aria-pressed","false");
+  } else { cfBox.hidden = true; }
+  typeText(c.text);
+}
+
+function toggleCF(){
+  const c = CASES[current]; if (!c.cf) return;
+  cfOn = !cfOn;
+  const b = document.getElementById("cf-btn");
+  b.classList.toggle("on", cfOn);
+  b.textContent = cfOn ? "원래 값으로 되돌리기" : "시뮬레이션 적용";
+  b.setAttribute("aria-pressed", String(cfOn));
+  const pd = cfOn ? c.cf.pd : c.pd;
+  document.getElementById("pd-num").textContent = fmtPD(pd);
+  const v = document.getElementById("verdict");
+  const approved = pd < THRESHOLD;
+  v.textContent = approved ? "승인 (재평가)" : c.verdict;
+  v.className = "verdict " + (approved ? "approve" : "reject");
+  renderGauge(pd, c.gaugeMax);
+}
+
+function renderFairness(){
+  const metrics = [
+    {lbl:"거절률", a:31.91, b:0.51},
+    {lbl:"FPR", a:31.74, b:0.45},
+    {lbl:"FNR", a:65.00, b:69.44}
+  ];
+  const max = 70;
+  const box = document.getElementById("fair-chart");
+  metrics.forEach(m => {
+    const l = document.createElement("div"); l.className = "fair-lbl"; l.textContent = m.lbl;
+    const t = document.createElement("div"); t.className = "fair-track";
+    const wa = m.a / max * 88, wb = m.b / max * 88;
+    t.innerHTML =
+      '<div class="fair-bar a" style="width:' + wa + '%"></div>' +
+      '<div class="fair-vlbl" style="top:2px;left:calc(' + wa + '% + 6px)">' + m.a.toFixed(2) + '%</div>' +
+      '<div class="fair-bar b" style="width:' + wb + '%"></div>' +
+      '<div class="fair-vlbl" style="top:22px;left:calc(' + wb + '% + 6px)">' + m.b.toFixed(2) + '%</div>';
+    box.appendChild(l); box.appendChild(t);
+  });
+}
+
+renderFairness();
+selectCase(3);
+</script>
+</body>
+</html>
