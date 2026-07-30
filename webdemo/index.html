@@ -71,13 +71,6 @@ h2{font-size:17px; font-weight:600; margin-bottom:12px}
 .explain strong{font-weight:600}
 .chip{display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:3px 10px; border-radius:999px; background:var(--mid); color:var(--ink-2)}
 .chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
-.fair-grid{display:grid; grid-template-columns:70px 1fr; gap:8px 12px; align-items:center; margin-top:8px}
-.fair-lbl{font-size:13px; text-align:right; color:var(--ink-2)}
-.fair-track{position:relative; height:40px}
-.fair-bar{position:absolute; left:0; height:16px; border-radius:0 4px 4px 0; min-width:2px}
-.fair-bar.a{top:2px; background:var(--s1)}
-.fair-bar.b{top:22px; background:var(--s2)}
-.fair-vlbl{position:absolute; font-size:11px; line-height:16px; color:var(--ink-2); white-space:nowrap}
 table{border-collapse:collapse; width:100%; font-size:13px; margin-top:14px}
 th,td{padding:6px 10px; border-bottom:1px solid var(--grid); text-align:right}
 th:first-child,td:first-child{text-align:left}
@@ -109,7 +102,7 @@ footer{margin-top:40px; font-size:12px; color:var(--muted); border-top:1px solid
   <div class="step" role="listitem"><div class="no">① 판단형 AI</div><div class="nm">평가</div><div class="ds">PD 산출 · 임계값 판정</div></div>
   <div class="step" role="listitem"><div class="no">② XAI (SHAP)</div><div class="nm">근거</div><div class="ds">개인별 기여 요인 Top 5</div></div>
   <div class="step" role="listitem"><div class="no">③ 생성형 AI</div><div class="nm">번역</div><div class="ds">자연어 설명문 (평가 비관여)</div></div>
-  <div class="step" role="listitem"><div class="no">④ 거버넌스</div><div class="nm">통제</div><div class="ds">HITL · 공정성 감사 · 캐시</div></div>
+  <div class="step" role="listitem"><div class="no">④ 거버넌스</div><div class="nm">통제</div><div class="ds">HITL 사람 검토 · 캐시 재생</div></div>
 </div>
 
 <div class="tabs" role="tablist" aria-label="사례 선택">
@@ -156,24 +149,6 @@ footer{margin-top:40px; font-size:12px; color:var(--muted); border-top:1px solid
   <div class="note">프롬프트는 5요소 공식(역할·맥락·목표·형식·제약)으로 구성 — 입력에 없는 수치 생성 금지, 확정적 약속 금지. 최종 발송 전 사람 검토(HITL)를 전제로 설계.</div>
 </section>
 
-<section class="card" aria-labelledby="h-fair">
-  <h2 id="h-fair">④ 공정성 감사 <span style="font-weight:400;color:var(--muted);font-size:12px">거버넌스 계층 · 그룹별 세분화 평가</span></h2>
-  <div class="note" style="margin:0 0 4px">기초데이터에 인구통계 변수가 없어(법상 배제) <strong>취약계층 프록시 그룹</strong>으로 세분화: 그룹 A = 3금융권(대부업 등) 대출 보유(n=376), 그룹 B = 미보유(n=39,716) — 홀드아웃 기준.</div>
-  <div class="fair-grid" id="fair-chart"></div>
-  <div class="legend">
-    <span><span class="sw" style="background:var(--s1)"></span>그룹 A — 3금융권 이용</span>
-    <span><span class="sw" style="background:var(--s2)"></span>그룹 B — 미이용</span>
-  </div>
-  <table>
-    <caption class="sr-only">그룹별 공정성 지표 표</caption>
-    <thead><tr><th>그룹</th><th>N</th><th>실제 연체율</th><th>거절률</th><th>FPR</th><th>FNR</th></tr></thead>
-    <tbody>
-      <tr><td>A (3금융권 이용)</td><td>376</td><td>5.32%</td><td>31.91%</td><td>31.74%</td><td>65.00%</td></tr>
-      <tr><td>B (미이용)</td><td>39,716</td><td>0.18%</td><td>0.51%</td><td>0.45%</td><td>69.44%</td></tr>
-    </tbody>
-  </table>
-  <div class="note">거절률 격차(Demographic Parity 관점)는 0.314로 크지만, 실제 연체자를 놓치는 비율(FNR, Equal Opportunity 관점)의 격차는 0.044로 작습니다. <strong>격차는 차별의 증거가 아니라 조사 신호</strong> — 그룹 A의 실제 위험(연체율 5.32% vs 0.18%)이 반영된 결과인지, 부당한 대우인지 후속 검토를 촉발하는 지표로 사용합니다.</div>
-</section>
 
 <section class="card" aria-labelledby="h-reg">
   <h2 id="h-reg">규제 매핑</h2>
@@ -306,28 +281,7 @@ function toggleCF(){
   renderGauge(pd, c.gaugeMax);
 }
 
-function renderFairness(){
-  const metrics = [
-    {lbl:"거절률", a:31.91, b:0.51},
-    {lbl:"FPR", a:31.74, b:0.45},
-    {lbl:"FNR", a:65.00, b:69.44}
-  ];
-  const max = 70;
-  const box = document.getElementById("fair-chart");
-  metrics.forEach(m => {
-    const l = document.createElement("div"); l.className = "fair-lbl"; l.textContent = m.lbl;
-    const t = document.createElement("div"); t.className = "fair-track";
-    const wa = m.a / max * 88, wb = m.b / max * 88;
-    t.innerHTML =
-      '<div class="fair-bar a" style="width:' + wa + '%"></div>' +
-      '<div class="fair-vlbl" style="top:2px;left:calc(' + wa + '% + 6px)">' + m.a.toFixed(2) + '%</div>' +
-      '<div class="fair-bar b" style="width:' + wb + '%"></div>' +
-      '<div class="fair-vlbl" style="top:22px;left:calc(' + wb + '% + 6px)">' + m.b.toFixed(2) + '%</div>';
-    box.appendChild(l); box.appendChild(t);
-  });
-}
 
-renderFairness();
 selectCase(3);
 </script>
 </body>
